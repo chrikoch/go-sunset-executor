@@ -1,0 +1,16 @@
+{"entries":
+    [
+        {
+            "location": {"latitude":52.37052, "longitude":9.73322},
+            "offsetMinutes": -15,
+            "target": "http://www.google.de",
+            "method": "GET"
+        },
+        {
+            "location": {"latitude":52.52437, "longitude":13.41053},
+            "offsetMinutes": 5,
+            "target": "http://www.heise.de",
+            "method": "POST"
+        }
+    ]
+}
