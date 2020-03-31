@@ -94,6 +94,9 @@ func execute(e config.Entry) {
 		fmt.Println(err)
 		return
 	}
+
+	defer resp.Body.Close()
+
 	log.Printf("END calling %v with method %v\n", e.Target, e.Method)
 	log.Printf("response Header: %v\n", resp.Header)
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
