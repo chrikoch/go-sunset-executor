@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
@@ -30,8 +32,70 @@ func main() {
 	fmt.Println(c)
 
 	for _, e := range c.Entries {
-		rise, set := sunrise.SunriseSunset(e.Loc.Latitude, e.Loc.Longitude, time.Now().Year(), time.Now().Month(), time.Now().Day())
-		fmt.Println(rise)
-		fmt.Println(set)
+		go triggerExecutions(e)
 	}
+
+	//wait forever, because everything is done in the go-routines
+	select {}
+}
+
+type date struct {
+	day   int
+	month time.Month
+	year  int
+}
+
+func triggerExecutions(e config.Entry) {
+
+	for {
+		//wait until next execution time
+		waitFor := time.Until(nextExecutionTime(e))
+		fmt.Printf("have to wait %v seconds until sunset at %v, %v, offset %v\n", waitFor, e.Loc.Latitude, e.Loc.Longitude, e.TimeOffsetMinutes)
+		time.Sleep(waitFor)
+
+		//execute
+		execute(e)
+	}
+}
+
+func nextExecutionTime(e config.Entry) time.Time {
+	var currentDate date
+	currentDate.year, currentDate.month, currentDate.day = time.Now().Date()
+
+	for {
+		//currently only sunSET is supported
+		_, sunsetCurrentDate := sunrise.SunriseSunset(e.Loc.Latitude, e.Loc.Longitude, currentDate.year, currentDate.month, currentDate.day)
+		//add Offset
+		executionTime := sunsetCurrentDate.Add(time.Duration(e.TimeOffsetMinutes) * time.Minute)
+
+		//by adding 1 second to Now() we ensure the execution time isn't returned twice
+		if executionTime.After(time.Now().Add(time.Second)) {
+			return executionTime
+		}
+
+		//executionTime is in the past -> move to next day
+		currentDate.year, currentDate.month, currentDate.day =
+			time.Date(currentDate.year, currentDate.month, currentDate.day, 0, 0, 0, 0, time.Local).AddDate(0, 0, 1).Date()
+	}
+}
+
+func execute(e config.Entry) {
+	client := http.Client{}
+	req, err := http.NewRequest(e.Method, e.Target, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("START calling %v with method %v\n", e.Target, e.Method)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("END calling %v with method %v\n", e.Target, e.Method)
+	fmt.Printf("response Header: %v\n", resp.Header)
+	bodyBytes, _ := ioutil.ReadAll(resp.Body)
+	fmt.Printf("response Body: %v\n", string(bodyBytes))
+
 }
