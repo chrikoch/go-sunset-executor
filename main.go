@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -28,8 +29,8 @@ func main() {
 	err := c.ReadFromFile(configFilename)
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
-	fmt.Println(c)
 
 	for _, e := range c.Entries {
 		go triggerExecutions(e)
@@ -50,7 +51,7 @@ func triggerExecutions(e config.Entry) {
 	for {
 		//wait until next execution time
 		waitFor := time.Until(nextExecutionTime(e))
-		fmt.Printf("have to wait %v seconds until sunset at %v, %v, offset %v\n", waitFor, e.Loc.Latitude, e.Loc.Longitude, e.TimeOffsetMinutes)
+		log.Printf("have to wait %v seconds until sunset at %v, %v, offset %v\n", waitFor, e.Loc.Latitude, e.Loc.Longitude, e.TimeOffsetMinutes)
 		time.Sleep(waitFor)
 
 		//execute
@@ -87,15 +88,15 @@ func execute(e config.Entry) {
 		return
 	}
 
-	fmt.Printf("START calling %v with method %v\n", e.Target, e.Method)
+	log.Printf("START calling %v with method %v\n", e.Target, e.Method)
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("END calling %v with method %v\n", e.Target, e.Method)
-	fmt.Printf("response Header: %v\n", resp.Header)
+	log.Printf("END calling %v with method %v\n", e.Target, e.Method)
+	log.Printf("response Header: %v\n", resp.Header)
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
-	fmt.Printf("response Body: %v\n", string(bodyBytes))
+	log.Printf("response Body: %v\n", string(bodyBytes))
 
 }
